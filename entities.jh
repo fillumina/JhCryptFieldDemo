@@ -1,0 +1,23 @@
+
+entity Customer {
+	firstName String,
+    lastName String,
+    email String,
+    telephone String,
+    addressRaw TextBlob
+}
+
+/** By using the 1:1 technique, the id of this field is the id of the Customer */
+entity CustomerAddress {
+    street String,
+    city String,
+    postcode String required maxlength(10),
+    country String required maxlength(2)
+}
+
+relationship OneToOne {
+    Customer{address(street)} to CustomerAddress
+}
+
+paginate Customer, CustomerAddress with pagination
+

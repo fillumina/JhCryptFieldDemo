@@ -48,6 +48,8 @@ public class CacheConfiguration {
             createCache(cm, com.fillumina.demo.jhcryptfield.domain.User.class.getName());
             createCache(cm, com.fillumina.demo.jhcryptfield.domain.Authority.class.getName());
             createCache(cm, com.fillumina.demo.jhcryptfield.domain.User.class.getName() + ".authorities");
+            createCache(cm, com.fillumina.demo.jhcryptfield.domain.Customer.class.getName());
+            createCache(cm, com.fillumina.demo.jhcryptfield.domain.CustomerAddress.class.getName());
             // jhipster-needle-ehcache-add-entry
         };
     }
