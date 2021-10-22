@@ -1,43 +1,30 @@
 package com.fillumina.demo.jhcryptfield.domain;
 
+import com.fillumina.demo.jhcryptfield.security.EncryptionHelper.IdSettable;
 import io.swagger.annotations.ApiModel;
 import java.io.Serializable;
-import javax.persistence.*;
 import javax.validation.constraints.*;
-import org.hibernate.annotations.Cache;
-import org.hibernate.annotations.CacheConcurrencyStrategy;
 
 /**
  * By using the 1:1 technique, the id of this field is the id of the Customer
  */
 @ApiModel(description = "By using the 1:1 technique, the id of this field is the id of the Customer")
-@Entity
-@Table(name = "customer_address")
-@Cache(usage = CacheConcurrencyStrategy.READ_WRITE)
-public class CustomerAddress implements Serializable {
+public class CustomerAddress implements IdSettable, Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGenerator")
-    @SequenceGenerator(name = "sequenceGenerator")
-    @Column(name = "id")
     private Long id;
 
-    @Column(name = "street")
     private String street;
 
-    @Column(name = "city")
     private String city;
 
     @NotNull
     @Size(max = 10)
-    @Column(name = "postcode", length = 10, nullable = false)
     private String postcode;
 
     @NotNull
     @Size(max = 2)
-    @Column(name = "country", length = 2, nullable = false)
     private String country;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here

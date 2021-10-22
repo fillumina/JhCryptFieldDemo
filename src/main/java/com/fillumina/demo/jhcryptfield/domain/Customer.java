@@ -1,5 +1,6 @@
 package com.fillumina.demo.jhcryptfield.domain;
 
+import com.fillumina.demo.jhcryptfield.security.EncryptionHelper;
 import java.io.Serializable;
 import javax.persistence.*;
 import org.hibernate.annotations.Cache;
@@ -15,6 +16,8 @@ import org.hibernate.annotations.Type;
 public class Customer implements Serializable {
 
     private static final long serialVersionUID = 1L;
+
+    private static final EncryptionHelper<CustomerAddress> ENCRYPTION_HELPER = new EncryptionHelper<>(CustomerAddress.class);
 
     @Id
     @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "sequenceGenerator")
@@ -39,11 +42,14 @@ public class Customer implements Serializable {
     @Column(name = "address_raw")
     private String addressRaw;
 
-    @OneToOne
-    @JoinColumn(unique = true)
-    private CustomerAddress address;
+    private transient CustomerAddress address;
 
     // jhipster-needle-entity-add-field - JHipster will add fields here
+
+    @PostLoad
+    public void initAddress() {
+        getAddress();
+    }
 
     public Long getId() {
         return this.id;
@@ -124,11 +130,13 @@ public class Customer implements Serializable {
     }
 
     public CustomerAddress getAddress() {
+        this.address = ENCRYPTION_HELPER.decryptObject(id, this.address, this.addressRaw);
         return this.address;
     }
 
     public void setAddress(CustomerAddress customerAddress) {
         this.address = customerAddress;
+        this.addressRaw = ENCRYPTION_HELPER.encryptObject(customerAddress);
     }
 
     public Customer address(CustomerAddress customerAddress) {

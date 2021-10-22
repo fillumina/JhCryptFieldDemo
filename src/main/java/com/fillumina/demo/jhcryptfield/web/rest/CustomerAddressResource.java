@@ -1,28 +1,24 @@
 package com.fillumina.demo.jhcryptfield.web.rest;
 
+import com.fillumina.demo.jhcryptfield.domain.Customer;
 import com.fillumina.demo.jhcryptfield.domain.CustomerAddress;
-import com.fillumina.demo.jhcryptfield.repository.CustomerAddressRepository;
+import com.fillumina.demo.jhcryptfield.repository.CustomerRepository;
 import com.fillumina.demo.jhcryptfield.web.rest.errors.BadRequestAlertException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import tech.jhipster.web.util.HeaderUtil;
-import tech.jhipster.web.util.PaginationUtil;
 import tech.jhipster.web.util.ResponseUtil;
 
 /**
@@ -40,10 +36,10 @@ public class CustomerAddressResource {
     @Value("${jhipster.clientApp.name}")
     private String applicationName;
 
-    private final CustomerAddressRepository customerAddressRepository;
+    private final CustomerRepository customerRepository;
 
-    public CustomerAddressResource(CustomerAddressRepository customerAddressRepository) {
-        this.customerAddressRepository = customerAddressRepository;
+    public CustomerAddressResource(CustomerRepository customerRepository) {
+        this.customerRepository = customerRepository;
     }
 
     /**
@@ -60,11 +56,26 @@ public class CustomerAddressResource {
         if (customerAddress.getId() != null) {
             throw new BadRequestAlertException("A new customerAddress cannot already have an ID", ENTITY_NAME, "idexists");
         }
-        CustomerAddress result = customerAddressRepository.save(customerAddress);
+        CustomerAddress result = saveCustomerAddress(customerAddress);
         return ResponseEntity
             .created(new URI("/api/customer-addresses/" + result.getId()))
-            .headers(HeaderUtil.createEntityCreationAlert(applicationName, false, ENTITY_NAME, result.getId().toString()))
+            .headers(HeaderUtil.createEntityCreationAlert(applicationName, true, ENTITY_NAME, result.getId().toString()))
             .body(result);
+    }
+
+    /**
+     * Save {@link CustomerAddress} by loading, updating and saving it's owner class.
+     * It's a bit convoluted but should work.
+     *
+     * @param customerAddress
+     * @return
+     */
+    private CustomerAddress saveCustomerAddress(CustomerAddress customerAddress) {
+        Customer customer = customerRepository.getById(customerAddress.getId());
+        customer.setAddress(customerAddress);
+        Customer savedCustomer = customerRepository.save(customer);
+        CustomerAddress result = savedCustomer.getAddress();
+        return result;
     }
 
     /**
@@ -90,14 +101,15 @@ public class CustomerAddressResource {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
-        if (!customerAddressRepository.existsById(id)) {
+        if (!customerRepository.existsById(id)) {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
-        CustomerAddress result = customerAddressRepository.save(customerAddress);
+        CustomerAddress result = saveCustomerAddress(customerAddress);
+
         return ResponseEntity
             .ok()
-            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, customerAddress.getId().toString()))
+            .headers(HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, customerAddress.getId().toString()))
             .body(result);
     }
 
@@ -125,48 +137,49 @@ public class CustomerAddressResource {
             throw new BadRequestAlertException("Invalid ID", ENTITY_NAME, "idinvalid");
         }
 
-        if (!customerAddressRepository.existsById(id)) {
+        if (!customerRepository.existsById(id)) {
             throw new BadRequestAlertException("Entity not found", ENTITY_NAME, "idnotfound");
         }
 
-        Optional<CustomerAddress> result = customerAddressRepository
+        Optional<Customer> customerResult = customerRepository
             .findById(customerAddress.getId())
-            .map(existingCustomerAddress -> {
+            .map(customer -> {
+                final CustomerAddress address = customer.getAddress();
                 if (customerAddress.getStreet() != null) {
-                    existingCustomerAddress.setStreet(customerAddress.getStreet());
+                    address.setStreet(customerAddress.getStreet());
                 }
                 if (customerAddress.getCity() != null) {
-                    existingCustomerAddress.setCity(customerAddress.getCity());
+                    address.setCity(customerAddress.getCity());
                 }
                 if (customerAddress.getPostcode() != null) {
-                    existingCustomerAddress.setPostcode(customerAddress.getPostcode());
+                    address.setPostcode(customerAddress.getPostcode());
                 }
                 if (customerAddress.getCountry() != null) {
-                    existingCustomerAddress.setCountry(customerAddress.getCountry());
+                    address.setCountry(customerAddress.getCountry());
                 }
 
-                return existingCustomerAddress;
+                return customer;
             })
-            .map(customerAddressRepository::save);
+            .map(customerRepository::save);
+
+        Optional<CustomerAddress> result = customerResult.isPresent() ? Optional.of(customerResult.get().getAddress()) : Optional.empty();
 
         return ResponseUtil.wrapOrNotFound(
             result,
-            HeaderUtil.createEntityUpdateAlert(applicationName, false, ENTITY_NAME, customerAddress.getId().toString())
+            HeaderUtil.createEntityUpdateAlert(applicationName, true, ENTITY_NAME, customerAddress.getId().toString())
         );
     }
 
     /**
      * {@code GET  /customer-addresses} : get all the customerAddresses.
      *
-     * @param pageable the pagination information.
      * @return the {@link ResponseEntity} with status {@code 200 (OK)} and the list of customerAddresses in body.
      */
     @GetMapping("/customer-addresses")
-    public ResponseEntity<List<CustomerAddress>> getAllCustomerAddresses(Pageable pageable) {
-        log.debug("REST request to get a page of CustomerAddresses");
-        Page<CustomerAddress> page = customerAddressRepository.findAll(pageable);
-        HttpHeaders headers = PaginationUtil.generatePaginationHttpHeaders(ServletUriComponentsBuilder.fromCurrentRequest(), page);
-        return ResponseEntity.ok().headers(headers).body(page.getContent());
+    public List<CustomerAddress> getAllCustomerAddresses() {
+        log.debug("REST request to get all CustomerAddresses");
+        List<Customer> customerList = customerRepository.findAll();
+        return customerList.stream().map(c -> c.getAddress()).filter(a -> a != null).collect(Collectors.toList());
     }
 
     /**
@@ -178,8 +191,17 @@ public class CustomerAddressResource {
     @GetMapping("/customer-addresses/{id}")
     public ResponseEntity<CustomerAddress> getCustomerAddress(@PathVariable Long id) {
         log.debug("REST request to get CustomerAddress : {}", id);
-        Optional<CustomerAddress> customerAddress = customerAddressRepository.findById(id);
-        return ResponseUtil.wrapOrNotFound(customerAddress);
+        Optional<Customer> customerOpt = customerRepository.findById(id);
+        Optional<CustomerAddress> customerAddressOpt;
+        if (customerOpt.isPresent()) {
+            Customer customer = customerOpt.get();
+            CustomerAddress customerAddress = customer.getAddress();
+            CustomerAddress address = customerAddress != null ? customerAddress : new CustomerAddress().id(id);
+            customerAddressOpt = Optional.of(address);
+        } else {
+            customerAddressOpt = Optional.empty();
+        }
+        return ResponseUtil.wrapOrNotFound(customerAddressOpt);
     }
 
     /**
@@ -191,10 +213,10 @@ public class CustomerAddressResource {
     @DeleteMapping("/customer-addresses/{id}")
     public ResponseEntity<Void> deleteCustomerAddress(@PathVariable Long id) {
         log.debug("REST request to delete CustomerAddress : {}", id);
-        customerAddressRepository.deleteById(id);
+        customerRepository.deleteById(id);
         return ResponseEntity
             .noContent()
-            .headers(HeaderUtil.createEntityDeletionAlert(applicationName, false, ENTITY_NAME, id.toString()))
+            .headers(HeaderUtil.createEntityDeletionAlert(applicationName, true, ENTITY_NAME, id.toString()))
             .build();
     }
 }

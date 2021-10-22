@@ -32,12 +32,25 @@
         </dd>
         <dt><span>Address Raw</span></dt>
         <dd>
-          <span>{{ customer.addressRaw }}</span>
+          <span>{{
+            customer.addressRaw && customer.addressRaw.length > 6 ? (customer.addressRaw | slice: 0:20) + '..' : customer.addressRaw
+          }}</span>
         </dd>
         <dt><span>Address</span></dt>
         <dd>
           <div *ngIf="customer.address">
             <a [routerLink]="['/customer-address', customer.address?.id, 'view']">{{ customer.address?.street }}</a>
+          </div>
+          <div>
+            <button [routerLink]="['/customer-address', customer.id, 'view']" class="btn btn-info btn-sm">
+              <fa-icon icon="eye"></fa-icon>&nbsp;<span jhiTranslate="entity.action.edit">View</span>
+            </button>
+            <button [routerLink]="['/customer-address', customer.id, 'edit']" class="btn btn-info btn-sm">
+              <fa-icon icon="pencil-alt"></fa-icon>&nbsp;<span jhiTranslate="entity.action.edit">Edit</span>
+            </button>
+            <button (click)="removeAddress()" class="btn btn-danger btn-sm">
+              <fa-icon icon="times"></fa-icon>&nbsp;<span jhiTranslate="entity.action.delete">Delete</span>
+            </button>
           </div>
         </dd>
       </dl>

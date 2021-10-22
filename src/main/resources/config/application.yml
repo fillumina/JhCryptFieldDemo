@@ -179,4 +179,7 @@ jhipster:
 # https://www.jhipster.tech/common-application-properties/
 # ===================================================================
 
-# application:
+application:
+  field-encryption-secret:
+    password: 'supersecret'
+    salt: 'agrainofsalt'
