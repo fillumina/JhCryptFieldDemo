@@ -1,5 +1,59 @@
 # JhCryptFieldDemo
 
+Demo application to show how to manage encrypted JSON feilds. This would protect against compromised, externalized or leaked db. Of course the downside is that the encrypted data cannot be searched or queried and takes more CPU cycles to be accessed.
+
+### Features
+
+- fully encrypted JSON objects can contain whatever structure needed
+- the UI is mostly untouched: the encrypted 'entity' are provided transparently (use a HTTPS transport of course) and can still be list, edit, modified as usual and the swagger (open-api) API is still fully available
+- the encrypted data cannot be searched or queried (but you can use [blind index](https://itnext.io/indexing-encrypted-database-field-for-searching-e50e7bcfbd80), not implemented here)
+
+### Description
+
+The secrets (password and salt) are in the `application.yml` configuration file but should be moved in a more protected location on production or otherwise provided. There is a quite convoluted mechanism (static fields plus lazy initialization) in place to provide secrets to the entity at runtime but it's working fine.
+
+The container JPA entity (`Customer`) uses a `TextBlob` field to contain an encrypted, base64 encoded, JSON enclosed object `CustomerAddress` (a binary `Blob` would do great too, just skip the base64 encoding phase).
+
+The generated web application (UI and API) is mostly untouched and only the back-end needs to be modified. The only UI changes regard the fact that the enclosed entity cannot be created if the container is not already persisted so the enclosed object edit operation has been moved to the view page instead of the edit page of the container (that's just the easiest solution with minimal impact on the UI, of course there are other ways).
+
+The fastest way to implement that is to write down the `JDL` file with the enclosed object in a one-to-one relationship with the container and import that as usual with `jhipster jdl entities.jh`. Then the enclosed entity (`CustomerAddress`)can be cleaned off its JPA annotations and its changelogs removed from liquibase (don't forget to remove the relationship in the owner entity `Customer` too).
+
+The repository must be removed (the enclosed object is no more a db entity in its own right), the rest service needs to be modified to use the container repository instead of the removed enclosed one.
+
+Check the git commits for further details. Here is the `JDL` file used:
+
+```
+// this is the container entity (the only one persisted on db)
+entity Customer {
+    firstName String,
+    lastName String,
+    email String,
+    telephone String,
+    // this field contains the encrypted JSON address
+    addressRaw TextBlob
+}
+
+// this is the enclosed entity.
+// it is an entity here to allow the generation of the ui.
+// the jpa annotations and db liquibase instructions will be removed.
+entity CustomerAddress {
+    street String,
+    city String,
+    postcode String required maxlength(10),
+    country String required maxlength(2)
+}
+
+// the id of enclosed object is the id of the container.
+relationship OneToOne {
+    Customer{address(street)} to CustomerAddress
+}
+
+paginate Customer, CustomerAddress with pagination
+
+```
+
+## JHipster
+
 This application was generated using JHipster 7.3.1, you can find documentation and help at [https://www.jhipster.tech/documentation-archive/v7.3.1](https://www.jhipster.tech/documentation-archive/v7.3.1).
 
 ## Development
